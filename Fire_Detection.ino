@@ -1,4 +1,5 @@
 #include "credentials.h"
+#include "pins_arduino.h"
 
 #include <BlynkSimpleEsp8266.h>
 #include <ESP8266WiFi.h>
@@ -11,19 +12,17 @@
 // Wifi & Blynk Credentials are located at credentials.h
 
 // Define PIN
-#define FLAME_SENSOR_PIN 33
-#define BUZZER_PIN 25
+#define FLAME_SENSOR_PIN D6
+#define BUZZER_PIN D5
 
-#define LED_RED_PIN 26
-#define LED_GREEN_PIN 
+#define LED_RED_PIN D3
+#define LED_GREEN_PIN D4
 
-#define SERVO_PIN 27
-
-#define DHT_PIN 32
+#define DHT_PIN D8
 #define DHTTYPE DHT11
 
-#define FLAME_SENSOR_PIN
-#define RELAY_PIN
+#define SERVO_PIN D7
+#define RELAY_PIN D9
 
 // Variables
 DHT dht(DHT_PIN, DHTTYPE);
@@ -46,16 +45,11 @@ void sendDHTData() {
   temperature = dht.readTemperature();
   humidity = dht.readHumidity();
 
-  // if (!isnan(temperature) && !isnan(humidity)) {
-  //   Blynk.virtualWrite(V1, temperature); // Send Temperature
-  //   Blynk.virtualWrite(V2, humidity);    // Send Humidity
-  
-  if (temperature != 0.0 && humidity != 0.0) {
+  if (!isnan(temperature) && !isnan(humidity)) {
     Blynk.virtualWrite(V1, temperature); // Send Temperature
     Blynk.virtualWrite(V2, humidity);    // Send Humidity
-
-  } else{
-    Serial.println("## temp/humidity null");
+  } else {
+    Serial.println(F("## temp/humidity null"));
 
   }
 }
@@ -67,24 +61,23 @@ BLYNK_WRITE(V3) {
 }
 
 // Relay control
-void pumpControl(String command){
-  if(strcmp(RELAY_PIN, "ON")){
+void pumpControl(char *command){
+  if (strcmp(command, "ON") == 0) {
     digitalWrite(RELAY_PIN, HIGH);
 
-  } else if(strcmp(command, "OFF")){
-    digitalWrite(PIN, LOW);
+  } else if (strcmp(command, "OFF") == 0) {
+    digitalWrite(RELAY_PIN, LOW);
 
   }
 }
 
 // Logic
 void mainLogic(){
-
   if(flameState == 1){
     Serial.println("Fire detected");
     pumpControl("ON");
 
-    digitalWrite(LED_PIN, HIGH);
+    digitalWrite(LED_RED_PIN, HIGH);
     digitalWrite(BUZZER_PIN, HIGH);
 
     Blynk.virtualWrite(V5, 1); // LED Indicator ON
@@ -94,7 +87,7 @@ void mainLogic(){
     Serial.println("No Fire Detected");
     pumpControl("OFF");
 
-    digitalWrite(LED_PIN, LOW);
+    digitalWrite(LED_RED_PIN, LOW);
     digitalWrite(BUZZER_PIN, LOW);
 
     Blynk.virtualWrite(V5, 0); // LED Indicator OFF
@@ -104,9 +97,9 @@ void mainLogic(){
 }
 
 void checkWifi(){
-  Serial.print("Wifi Status: ")
+  Serial.print("Wifi Status: ");
   if(WiFi.status() == WL_CONNECTED){
-    Serial.println("Connected!")
+    Serial.println("Connected!");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 
@@ -117,30 +110,27 @@ void checkWifi(){
 }
 
 void logAll(){
-  Serial.println("+-----------------------+");
-  Serial.println("| Log all functionality |");
-  Serial.println("+-----------------------+");
+  Serial.println(F("+-----------------------+"));
+  Serial.println(F("| Log all functionality |"));
+  Serial.println(F("+-----------------------+"));
 
-  Serial.print("Flame state: ");
-  Serial.println(flameState)
+  Serial.print(F("Flame state: "));
+  Serial.println(flameState);
 
-  Serial.print("Temp: ");
+  Serial.print(F("Temp: "));
   Serial.println(temperature);
 
-  Serial.print("Humid: ");
+  Serial.print(F("Humid: "));
   Serial.println(humidity);
   
   checkWifi();
 
-  Serial.print("Blynk: ")
+  Serial.print(F("Blynk: "));
   if(Blynk.connected()){
-    Serial.println("Connected");
+    Serial.println(F("Connected"));
   } else{
-    Serial.println("Disconnected");
+    Serial.println(F("Disconnected"));
   }
-
-  delay(4000);
-
 }
 
 void setup() {
@@ -152,7 +142,8 @@ void setup() {
 
   // OUTPUT
   pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(LED_RED_PIN, OUTPUT);
+  pinMode(LED_GREEN_PIN, OUTPUT);
   pinMode(RELAY_PIN, OUTPUT);
 
   pinMode(BUILTIN_LED, OUTPUT);
@@ -167,6 +158,8 @@ void setup() {
   timer.setInterval(1000L, sendFlameData); // Flame Sensor every 1 sec
   timer.setInterval(2000L, sendDHTData);   // DHT Data every 2 sec
 
+  timer.setTimeout(5000L, logAll);
+
 }
 
 void loop() {
@@ -174,6 +167,4 @@ void loop() {
   timer.run();
 
   mainLogic(); 
-  logAll();
-
 }
